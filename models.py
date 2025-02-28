@@ -90,15 +90,8 @@ class Player(models.Model):
 
 # Task Model
 class Task(models.Model):
-    CATEGORY_CHOICES = [
-        ('Taktisk', 'Taktisk'),
-        ('Mentalt', 'Mentalt'),
-        ('Fysisk', 'Fysisk'),
-    ]
-
     name = models.CharField(max_length=100)
     description = models.TextField()
-    category = models.CharField(max_length=10, choices=CATEGORY_CHOICES)
     video_url = models.URLField(blank=True, null=True)
     picture_url = models.URLField(blank=True, null=True)
     picture_desc = HTMLField(blank=True, null=True)
@@ -186,3 +179,119 @@ class CoachReport(models.Model):
 
     def __str__(self):
         return f"Report for {self.player_name} ({self.technical_level.name})"
+
+
+class Drill(models.Model):
+    name = models.CharField(max_length=200)
+    description = HTMLField()
+    video_url = models.URLField(blank=True, null=True)
+    picture_url = models.URLField(blank=True, null=True)
+    situation_type = models.ForeignKey(
+        "SituationType",
+        on_delete=models.CASCADE,
+        related_name="drills",
+        null=False,  # ✅ Temporarily allow NULL
+        blank=False,  # ✅ Allow blank values
+    )
+    suggested_time = models.PositiveIntegerField(default=10)
+    category = models.CharField(max_length=20,
+                                choices=[("Feeding", "Feeding"),
+                                         ("Semi-Live", "Semi-Live"),
+                                         ("Live", "Live")],
+                                default="Feeding")
+
+    def __str__(self):
+        return str(self.name)
+
+
+max_length = 20,
+
+
+# ✅ New Training Plan Model
+class TrainingPlan(models.Model):
+    name = models.CharField(max_length=200)
+    date = models.DateField()
+
+    def __str__(self):
+        return str(self.name)
+
+
+# ✅ Training Plan & Drill Relationship
+class TrainingPlanDrill(models.Model):
+    training_plan = models.ForeignKey("TrainingPlan",
+                                      on_delete=models.CASCADE,
+                                      related_name="plan_drills")
+    drill = models.ForeignKey("Drill",
+                              on_delete=models.CASCADE,
+                              related_name="drill_plans")
+    selected_level = models.ForeignKey(
+        "Level",
+        on_delete=models.CASCADE,
+        null=False,  # ✅ Temporarily allow NULL
+        blank=False,
+    )  # ✅ NEW: Store selected level
+    time_allocated = models.PositiveIntegerField()
+
+    def save(self, *args, **kwargs):
+        if not self.time_allocated:
+            self.time_allocated = self.drill.suggested_time
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.drill.name} in {self.training_plan.name} ({self.selected_level.name}, {self.time_allocated} min)"
+
+
+# ✅ New Mental Task Model
+class MentalTask(models.Model):
+    name = models.CharField(max_length=200)
+    description = HTMLField()
+    level = models.ForeignKey("Level",
+                              on_delete=models.CASCADE,
+                              related_name="mental_tasks")
+    drills = models.ManyToManyField("Drill", blank=True)
+    category = models.CharField(
+        max_length=50,  # Added max_length
+        choices=[
+            ("In-match", "In-match"),
+            ("Pre-match", "Pre-match"),
+            ("Gameplan", "Gameplan"),
+        ])
+
+    def __str__(self):
+        return str(self.name)
+
+
+# ✅ New Physical Task Model
+class PhysicalTask(models.Model):
+    name = models.CharField(max_length=200)
+    description = HTMLField()
+    level = models.ForeignKey("Level",
+                              on_delete=models.CASCADE,
+                              related_name="physical_tasks")
+    drills = models.ManyToManyField("Drill", blank=True)
+    category = models.CharField(
+        max_length=50,  # Added max_length
+        choices=[
+            ("Endurance", "Endurance"),
+            ("Strength", "Strength"),
+            ("Mobility", "Mobility"),
+        ])
+
+    def __str__(self):
+        return str(self.name)
+
+
+class KeyPoint(models.Model):
+    drill = models.ForeignKey("Drill",
+                              on_delete=models.CASCADE,
+                              related_name="key_points")
+    level = models.ForeignKey("Level",
+                              on_delete=models.CASCADE,
+                              related_name="key_points")
+    description = models.TextField(
+        null=True,  # ✅ Temporarily allow NULL
+        blank=True,
+    )
+
+    def __str__(self):
+        return f"{self.drill.name} - {self.level.name} Key Point"

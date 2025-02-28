@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django import forms
-from .models import SituationType, TechnicalLevel, Level, Player, Task, PlayerProgress, TechnicalLevelTasks, SituationType, TournamentType, Diagnosis, CoachReport, TechnicalPart
+from .models import SituationType, TechnicalLevel, Level, Player, Task, PlayerProgress, TechnicalLevelTasks, SituationType, TournamentType, Diagnosis, CoachReport, TechnicalPart, Drill, TrainingPlan, TrainingPlanDrill, MentalTask, PhysicalTask, KeyPoint
 from tinymce.widgets import TinyMCE
 from django.db import models
 from django.utils.html import format_html
@@ -45,21 +45,19 @@ class TaskResource(resources.ModelResource):
 
 class TaskAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     resource_class = TaskResource
-    list_display = ("name", "category", "situation_type", "level")
-    list_filter = ("category", "level")
+    list_display = ("name", "situation_type", "level")  # Removed "category"
+    list_filter = ("level", )  # Removed "category"
     search_fields = ("name", "level__name")
 
-    # ✅ Define the form field order
-    fields = ("level", "category", "situation_type", "name", "description",
-              "video_url", "picture_url", "picture_desc")
+    # ✅ Define the form field order (removed category)
+    fields = ("level", "situation_type", "name", "description", "video_url",
+              "picture_url", "picture_desc")
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        """ ✅ Only show SituationTypes that match the Task category """
+        """ ✅ Only show relevant SituationTypes """
         if db_field.name == "situation_type":
-            category = request.GET.get("category")  # Get selected category
-            if category:
-                kwargs["queryset"] = SituationType.objects.filter(
-                    category=category)
+            kwargs["queryset"] = SituationType.objects.all(
+            )  # Removed category filtering
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
@@ -172,6 +170,55 @@ class DiagnosisAdmin(admin.ModelAdmin):
     search_fields = ("name", "technical_level_task__name")
 
 
+class KeyPointInline(admin.TabularInline):
+    model = KeyPoint
+    extra = 0  # ✅ Prevents empty extra rows
+    ordering = ["level__order_number"]  # ✅ Sorts key points by level order number
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.order_by("level__order_number") 
+
+
+    # ✅ Register Drills
+class DrillAdmin(admin.ModelAdmin):
+    list_display = ("name", "situation_type", "category", "suggested_time")
+    search_fields = ("name", "situation_type__name")
+    list_filter = ("situation_type", "category")
+    inlines = [KeyPointInline]
+
+
+# ✅ Register TrainingPlanDrill
+class TrainingPlanDrillAdmin(admin.ModelAdmin):
+    list_display = ("training_plan", "drill", "selected_level",
+                    "time_allocated")
+    search_fields = ("training_plan__name", "drill__name")
+    list_filter = ("selected_level", )
+
+
+# ✅ Register Mental Tasks
+class MentalTaskAdmin(admin.ModelAdmin):
+    list_display = ("name", "level", "category")
+    search_fields = ("name", "category")
+
+
+# ✅ Register Physical Tasks
+class PhysicalTaskAdmin(admin.ModelAdmin):
+    list_display = ("name", "level", "category")
+    search_fields = ("name", "category")
+
+
+class KeyPointAdmin(admin.ModelAdmin):
+    list_display = ("drill", "level", "description")
+    search_fields = ("drill__name", "level__name")
+    list_filter = ("level", )
+
+
+class TrainingPlanAdmin(admin.ModelAdmin):
+    list_display = ("name", "date")
+    search_fields = ("name", )
+
+
 admin.site.register(TechnicalLevel)
 admin.site.register(Level, LevelAdmin)
 admin.site.register(Player)
@@ -183,3 +230,9 @@ admin.site.register(TournamentType)
 admin.site.register(Diagnosis, DiagnosisAdmin)
 admin.site.register(TechnicalPart, TechnicalPartAdmin)
 admin.site.register(CoachReport, CoachReportAdmin)
+admin.site.register(MentalTask, MentalTaskAdmin)
+admin.site.register(TrainingPlanDrill, TrainingPlanDrillAdmin)
+admin.site.register(TrainingPlan, TrainingPlanAdmin)
+admin.site.register(Drill, DrillAdmin)
+admin.site.register(PhysicalTask, PhysicalTaskAdmin)
+admin.site.register(KeyPoint, KeyPointAdmin)

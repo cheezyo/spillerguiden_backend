@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Level, Task, TechnicalLevel, TechnicalLevelTasks, SituationType, TournamentType, CoachReport, TechnicalPart, Diagnosis
+from .models import Level, Task, TechnicalLevel, TechnicalLevelTasks, SituationType, TournamentType, CoachReport, TechnicalPart, Diagnosis, TrainingPlan, TrainingPlanDrill, MentalTask, PhysicalTask, Drill, KeyPoint
 
 
 class CoachReportSerializer(serializers.ModelSerializer):
@@ -40,6 +40,7 @@ class LevelSerializer(serializers.ModelSerializer):
 
 class TaskSerializer(serializers.ModelSerializer):
     situation_type = SituationTypeSerializer()
+    level_name = serializers.CharField(source="level.name", read_only=True)
 
     class Meta:
         model = Task
@@ -85,3 +86,61 @@ class DiagnosisSerializer(serializers.ModelSerializer):
             "measure",
             "measure_picture_url",
         ]
+
+
+class DrillSerializer(serializers.ModelSerializer):
+    situation_type_name = serializers.ReadOnlyField(
+        source="situation_type.name")
+
+    class Meta:
+        model = Drill
+        fields = [
+            "id", "name", "description", "video_url", "picture_url",
+            "situation_type", "situation_type_name", "category",
+            "suggested_time"
+        ]
+
+
+class KeyPointSerializer(serializers.ModelSerializer):
+    drill_name = serializers.ReadOnlyField(source="drill.name")
+    level_name = serializers.ReadOnlyField(source="level.name")
+
+    class Meta:
+        model = KeyPoint
+        fields = [
+            "id", "drill", "drill_name", "level", "level_name", "description"
+        ]
+
+
+class TrainingPlanSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = TrainingPlan
+        fields = ["id", "name", "date"]
+
+
+class TrainingPlanDrillSerializer(serializers.ModelSerializer):
+    drill_name = serializers.ReadOnlyField(source="drill.name")
+    selected_level_name = serializers.ReadOnlyField(
+        source="selected_level.name")
+
+    class Meta:
+        model = TrainingPlanDrill
+        fields = [
+            "id", "training_plan", "drill", "drill_name", "selected_level",
+            "selected_level_name", "time_allocated"
+        ]
+
+
+class MentalTaskSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = MentalTask
+        fields = "__all__"
+
+
+class PhysicalTaskSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = PhysicalTask
+        fields = "__all__"
